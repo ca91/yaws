@@ -67,9 +67,9 @@ init(no_args) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call({int_request,
-             {request, Id, Payload, SessionValue, SoapAction}, OrigFrom}, From, State) ->
+             {request, Id, Args, Payload, SessionValue, SoapAction}, OrigFrom}, From, State) ->
     gen_server:reply(From, ok),
-    Reply = request(Id, Payload, SessionValue, SoapAction, State),
+    Reply = request(Id, Args, Payload, SessionValue, SoapAction, State),
     gen_server:reply(OrigFrom, Reply),
     yaws_soap_srv:worker(done),
     {noreply, State};
@@ -118,13 +118,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-request({M,F} = Id, {Req, Attachments}, SessionValue, Action, State) ->
+request({M,F} = Id, Args, {Req, Attachments}, SessionValue, Action, State) ->
     Model = (catch get_model(State, Id)),
     %%error_logger:info_report([?MODULE, {payload, Req}]),
     case catch yaws_soap_lib:parseMessage(Req, Model) of
         {ok, Header, Body} ->
             %% call function
-            result(Model, catch apply(M, F, [Header, Body,
+            result(Model, catch apply(M, F, [Args, Header, Body,
                                              Action, SessionValue,
                                              Attachments]));
         {error, Error} ->
@@ -132,14 +132,14 @@ request({M,F} = Id, {Req, Attachments}, SessionValue, Action, State) ->
         OtherError ->
             srv_error(io_lib:format("Error parsing message: ~p", [OtherError]))
     end;
-request({M,F} = Id, Req, SessionValue, Action, State) ->
+request({M,F} = Id, Args, Req, SessionValue, Action, State) ->
     %%error_logger:info_report([?MODULE, {payload, Req}]),
     Model = (catch get_model(State, Id)),
     Umsg = (catch erlsom_lib:toUnicode(Req)),
     case catch yaws_soap_lib:parseMessage(Umsg, Model) of
         {ok, Header, Body} ->
             %% call function
-            result(Model, catch apply(M, F, [Header, Body,
+            result(Model, catch apply(M, F, [Args, Header, Body,
                                              Action, SessionValue]));
         {error, Error} ->
             cli_error(Error);

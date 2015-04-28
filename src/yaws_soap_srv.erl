@@ -72,7 +72,7 @@ start_link(L, N) ->
 handler(Args, Id, Payload, SessionValue) ->
     Headers = Args#arg.headers,
     SoapAction = yaws_soap_lib:findHeader("SOAPAction", Headers#headers.other),
-    case gen_server:call(?SERVER, {request, Id, Payload,
+    case gen_server:call(?SERVER, {request, Id, Args, Payload,
                                    SessionValue, SoapAction}, infinity) of
         {ok, XmlDoc, ResCode, undefined} ->
             {false, XmlDoc, ResCode};
@@ -146,7 +146,7 @@ handle_call({add_wsdl, Id, WsdlModel}, _From, State) ->
     NewWsdlList = uinsert({Id, WsdlModel}, State#s.wsdl_list),
     {reply, ok, State#s{wsdl_list = NewWsdlList}};
 %%
-handle_call(Req = {request, _Id, _Payload, _SessionValue, _SoapAction}, From, State) ->
+handle_call(Req = {request, _Id, _Args, _Payload, _SessionValue, _SoapAction}, From, State) ->
     {noreply, call_worker({int_request, Req, From}, State)};
 handle_call(_, _, State) ->
     {noreply, State}.
