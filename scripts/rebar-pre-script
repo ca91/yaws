@@ -55,8 +55,8 @@ if [ -f mime_types.erl ]; then
     need_mime=`find mime_type_c.erl -newer mime_types.erl -print`
 fi
 if [ -n "$need_mime" ]; then
-    erlc -o ../ebin yaws_generated.erl || fail
-    erlc -o ../ebin mime_type_c.erl || fail
+    erlc +debug_info -o ../ebin yaws_generated.erl || fail
+    erlc +debug_info -o ../ebin mime_type_c.erl || fail
     erl -pa ../ebin -noshell -s mime_type_c generate || fail mime_types.erl
 fi
 
