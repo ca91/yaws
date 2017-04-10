@@ -91,7 +91,8 @@ add_yaws_soap_srv(_GC) ->
     [].
 add_yaws_soap_srv(GC, false) when GC#gconf.enable_soap == true ->
     [{yaws_soap_srv, {yaws_soap_srv, start_link,
-                      [GC#gconf.soap_srv_mods, GC#gconf.soap_workers]},
+                      [GC#gconf.soap_srv_mods, GC#gconf.soap_workers,
+                       GC#gconf.soap_workers_recycle]},
       permanent, 5000, worker, [yaws_soap_srv]}];
 add_yaws_soap_srv(GC, true) when GC#gconf.enable_soap == true ->
     Spec = add_yaws_soap_srv(GC, false),
@@ -820,6 +821,15 @@ fload(FD, globals, GC, C, Cs, Lno, Chars) ->
                 _ ->
                      {error, ?F("Expect integer at line ~w", [Lno])}
              end;
+
+        ["soap_workers_recycle", '=', Bool] ->
+             if (Bool == "true") ->
+                    fload(FD, globals, GC#gconf{soap_workers_recycle = true},
+                          C, Cs, Lno+1, Next);
+                true ->
+                    fload(FD, globals, GC#gconf{soap_workers_recycle = false},
+                          C, Cs, Lno+1, Next)
+              end;
 
         ["max_connections", '=', Int] ->
             case (catch list_to_integer(Int)) of
@@ -3062,4 +3072,3 @@ set_sendfile_flags(GC, "disable") ->
                                    false)};
 set_sendfile_flags(_, _) ->
     {error, "Expect erlang|yaws|disable"}.
-

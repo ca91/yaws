@@ -67,12 +67,17 @@ init(no_args) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call({int_request,
-             {request, Id, Args, Payload, SessionValue, SoapAction}, OrigFrom}, From, State) ->
+            {request, Id, Args, Payload, SessionValue, SoapAction}, OrigFrom, Recycle}, From, State) ->
     gen_server:reply(From, ok),
     Reply = request(Id, Args, Payload, SessionValue, SoapAction, State),
     gen_server:reply(OrigFrom, Reply),
     yaws_soap_srv:worker(done),
-    {noreply, State};
+    case Recycle of
+        true ->
+            {noreply, State};
+        false ->
+            {stop, normal, State}
+    end;
 handle_call(_Request, _, State) ->
     {noreply, State}.
 
