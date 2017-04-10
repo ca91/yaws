@@ -8,7 +8,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start_link/1, start_link/2,
+-export([start_link/0, start_link/1, start_link/3,
          setup/1, setup/2, setup/3,
          worker/1,
          handler/4
@@ -27,6 +27,7 @@
 %% State
 -record(s, {
           num_of_workers = 0,
+          recycle_workers = true,
           workers = [],      % list of Pids
           busy_workers = [], % list of {Pids, From} pairs.
           queue = [],        % list of waiting jobs
@@ -39,6 +40,7 @@
 -define(SERVER_ERROR_CODE, 500).
 
 -define(DEFAULT_NUM_OF_WORKERS, 3).
+-define(DEFAULT_RECYCLE_WORKERS, false).
 
 %%====================================================================
 %% API
@@ -51,11 +53,11 @@ start_link() ->
     start_link([]).
 %%
 start_link(N) when is_integer(N) ->
-    start_link([], N);
+    start_link([], N, ?DEFAULT_RECYCLE_WORKERS);
 start_link(L) ->
-    start_link(L, ?DEFAULT_NUM_OF_WORKERS).
+    start_link(L, ?DEFAULT_NUM_OF_WORKERS, ?DEFAULT_RECYCLE_WORKERS).
 %%
-start_link(L, N) ->
+start_link(L, N, B) ->
     %% We are dependent on erlsom
     case code:ensure_loaded(erlsom) of
         {error, _} ->
@@ -64,7 +66,7 @@ start_link(L, N) ->
                                    [?MODULE, Emsg]),
             {error, Emsg};
         {module, erlsom} ->
-            gen_server:start_link({local, ?SERVER}, ?MODULE, {L, N}, [])
+            gen_server:start_link({local, ?SERVER}, ?MODULE, {L, N, B}, [])
     end.
 
 %%% To be called from yaws_rpc.erl
@@ -117,12 +119,12 @@ worker(X) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init({L, N}) -> % { [ {{Mod,Handler}, WsdlFile} ] , NumOfWorkers }
+init({L, N, B}) -> % { [ {{Mod,Handler}, WsdlFile, Recycle} ] , NumOfWorkers }
     WsdlList = lists:foldl(fun(SoapSrvMod, OldList) ->
                                    setup_on_init( SoapSrvMod, OldList )
                            end,[],L),
     gen_server:cast(?MODULE, complete_init),
-    {ok, #s{wsdl_list = WsdlList, num_of_workers = N}}.
+    {ok, #s{wsdl_list = WsdlList, num_of_workers = N, recycle_workers = B}}.
 
 setup_on_init( {Id, WsdlFile}, OldList ) when is_tuple(Id),size(Id) == 2 ->
     Wsdl = yaws_soap_lib:initModel(WsdlFile),
@@ -147,8 +149,8 @@ handle_call({add_wsdl, Id, WsdlModel}, _From, State) ->
     {reply, ok, State#s{wsdl_list = NewWsdlList}};
 %%
 handle_call(Req = {request, _Id, _Args, _Payload, _SessionValue, _SoapAction}, From, State) ->
-    {noreply, call_worker({int_request, Req, From}, State)};
-handle_call(_, _, State) ->
+    {noreply, call_worker({int_request, Req, From, State#s.recycle_workers}, State)};
+handle_call(_Req, _, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -239,7 +241,7 @@ uinsert({K,_} = E, [{K,_}|T]) -> [E|T];
 uinsert(E, [H|T])             -> [H|uinsert(E,T)];
 uinsert(E, [])                -> [E].
 
-call_worker(Req = {int_request, _, From},
+call_worker(Req = {int_request, _, From, _Recycle},
             State = #s{workers = [Worker | Workers],
                        busy_workers = Busy})->
     case catch yaws_soap_srv_worker:call(Worker, Req) of
