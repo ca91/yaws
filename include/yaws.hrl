@@ -99,7 +99,9 @@
           yaws,                % server string
           id = "default",      % string identifying this instance of yaws
 
-          enable_soap = false, % start yaws_soap_srv iff true
+          enable_soap = false,        % start yaws_soap_srv iff true
+          soap_workers = 3,           % the number of soap workers to start
+          soap_workers_recycle= true, % Whether the workers are restarted each request or not
 
           %% a list of
           %% {{Mod, Func}, WsdlFile, Prefix} | {{Mod, Func}, WsdlFile}
