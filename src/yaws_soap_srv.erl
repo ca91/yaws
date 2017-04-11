@@ -149,7 +149,7 @@ handle_call({add_wsdl, Id, WsdlModel}, _From, State) ->
     {reply, ok, State#s{wsdl_list = NewWsdlList}};
 %%
 handle_call(Req = {request, _Id, _Args, _Payload, _SessionValue, _SoapAction}, From, State) ->
-    {noreply, call_worker({int_request, Req, From, State#s.recycle_workers}, State)};
+    {noreply, call_worker({int_request, Req, From}, State)};
 handle_call(_Req, _, State) ->
     {noreply, State}.
 
@@ -176,8 +176,15 @@ handle_cast({worker, done, Pid}, State) ->
     #s{workers = Workers,
        busy_workers = Busy,
        queue = Queue} = State,
-    State1 = State#s{workers = [Pid | Workers],
-                     busy_workers = lists:keydelete(Pid, 1, Busy)},
+    {value, {Pid, BFrom}, NewBusy} = lists:keytake(Pid, 1, Busy),
+    State1 = case {BFrom, State#s.recycle_workers} of
+        {From, false} when From =/= dummy ->
+            yaws_soap_sup:terminate_child(Pid),
+            yaws_soap_sup:start_child(),
+            State#s{busy_workers = NewBusy};
+        _Else ->
+            State#s{workers = [Pid | Workers], busy_workers = NewBusy}
+    end,
     State2 = case Queue of
                  [] -> State1;
                  [Q | Qs] -> call_worker(Q, State1#s{queue = Qs})
@@ -241,7 +248,7 @@ uinsert({K,_} = E, [{K,_}|T]) -> [E|T];
 uinsert(E, [H|T])             -> [H|uinsert(E,T)];
 uinsert(E, [])                -> [E].
 
-call_worker(Req = {int_request, _, From, _Recycle},
+call_worker(Req = {int_request, _, From},
             State = #s{workers = [Worker | Workers],
                        busy_workers = Busy})->
     case catch yaws_soap_srv_worker:call(Worker, Req) of
