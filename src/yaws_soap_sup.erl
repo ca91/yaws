@@ -11,6 +11,7 @@
 
 %% API
 -export([start_link/0, child_spec/0, start_children/1, setup/1]).
+-export([start_child/0, terminate_child/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -75,5 +76,11 @@ children() ->
 
 start_children(N, N) -> ok;
 start_children(N, Limit) ->
-    supervisor:start_child(?MODULE, []),
+    start_child(),
     start_children(N + 1, Limit).
+
+start_child() ->
+    supervisor:start_child(?MODULE, []).
+
+terminate_child(Pid) ->
+    supervisor:terminate_child(?MODULE, Pid).
