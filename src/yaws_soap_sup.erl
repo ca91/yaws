@@ -1,6 +1,7 @@
+%% coding: latin-1
 %%%-------------------------------------------------------------------
 %%% File    : yaws_soap_sup.erl
-%%% Author  : Jan Nyström <JanHenryNystrom@gmail.com>
+%%% Author  : Jan Nystrom <JanHenryNystrom@gmail.com>
 %%%           Andreas Hellström <andreas.hellstrom@teliasonera.com>
 %%% Desc    : Supervisor for soap workers.
 %%% Created : 4 Mar 2008 by Jan Nyström

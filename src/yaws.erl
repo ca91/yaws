@@ -2539,7 +2539,7 @@ mktemp(Template, Ret) ->
     mktemp(Tdir, Template, Ret, 0, Max, "").
 
 mktemp(Dir, Template, Ret, I, Max, Suffix) when I < Max ->
-    {X,Y,Z}  = now(),
+    {X,Y,Z}  = os:timestamp(),
     PostFix = erlang:integer_to_list(X) ++ "-" ++
         erlang:integer_to_list(Y) ++ "-" ++
         erlang:integer_to_list(Z),
