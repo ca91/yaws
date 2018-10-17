@@ -55,19 +55,19 @@ run(GC) ->
 rand() ->
     case os:type() of
         {win32, _} ->
-            {A1, A2, A3}=now(),
-            random:seed(A1, A2, A3),
-            random:uniform(1 bsl 64);
+            Now=os:timestamp(),
+            rand:seed(exs64, Now),
+            rand:uniform(1 bsl 64);
         _ ->
             try
                 crypto:start(),
-                crypto:rand_uniform(0, 1 bsl 64)
+                rand:uniform((1 bsl 64) + 1) - 1
             catch
                 _:_ ->
                     error_logger:warning_msg("Running without crypto app\n"),
-                    {A1, A2, A3}=now(),
-                    random:seed(A1, A2, A3),
-                    random:uniform(1 bsl 64)
+                    Now=os:timestamp(),
+                    rand:seed(Now),
+                    rand:uniform(1 bsl 64)
             end
     end.
 
@@ -573,4 +573,3 @@ stats([SID]) ->
     actl(SID, stats).
 running_config([SID]) ->
     actl(SID, running_config).
-
