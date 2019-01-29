@@ -126,7 +126,7 @@ handle_payload(Args, Handler, Type) ->
                 {Args#arg.clidata, {binary_to_list(Req), As}};
             _ ->
                 ?Debug("rpc plaintext call ~p~n", [PL]),
-                {PL, PL}
+                {Args#arg.clidata, Args#arg.clidata}
         end,
     case decode_handler_payload(RpcType, DecodedStr) of
         Batch when RpcType == json, is_list(Batch) ->
